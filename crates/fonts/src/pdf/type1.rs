@@ -18,10 +18,14 @@ fn charset(doc: &Document, font: &Dict) -> Option<HashSet<Vec<u8>>> {
     }
     let mut lexer = pdfcraft_cos::Lexer::new(&value.bytes, 0);
     let mut names = HashSet::new();
-    for _ in 0..MAX_CHARSET_NAMES {
+    // One more pass than names: the last one only finds the end of the string.
+    for _ in 0..=MAX_CHARSET_NAMES {
         lexer.skip_ws();
         if lexer.pos == value.bytes.len() {
             return (!names.is_empty()).then_some(names);
+        }
+        if names.len() == MAX_CHARSET_NAMES {
+            return None;
         }
         // Do not let a corrupt name list build arbitrary nested PDF objects.
         if value.bytes.get(lexer.pos) != Some(&b'/') {
@@ -89,7 +93,8 @@ pub(super) fn absent_codes(doc: &Document, font: &Dict) -> [u64; 4] {
     {
         let mut code = 0_u32;
         for item in diffs {
-            match item {
+            // An entry may be an indirect reference; skipping it would shift every later code.
+            match doc.resolve(item).as_ref() {
                 Object::Int(n) => code = u32::try_from(*n).unwrap_or(u32::MAX),
                 Object::Name(name) => {
                     if let Some(slot) = present.get_mut(code as usize) {

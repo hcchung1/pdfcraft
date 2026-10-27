@@ -357,6 +357,32 @@ fn type1_charset_checks_exact_encoding_names_instead_of_unicode_text() {
 }
 
 #[test]
+fn type1_differences_entries_may_be_indirect() {
+    let mut doc = Document::new_empty();
+    let mut f = type1_subset(&mut doc, PdfString::literal(b"/custom").into());
+    let code = doc.add(Object::Int(65));
+    let name = doc.add(Object::name("custom"));
+    let diffs = vec![Object::Ref(code), Object::Ref(name)];
+    let encoding = Dict::from_iter([(b"BaseEncoding".to_vec(), Object::name("StandardEncoding")), (b"Differences".to_vec(), Object::Array(diffs))]);
+    f.set(b"Encoding".to_vec(), Object::Dict(encoding));
+    let m = Metrics::from_dict(&doc, &f);
+    assert_eq!(m.encode("A").as_deref(), Some(b"A".as_slice()), "the referenced code 65 names the present glyph");
+    assert_eq!(m.encode("B"), None, "later codes are not shifted onto the wrong glyphs");
+}
+
+#[test]
+fn type1_charset_name_limit_is_inclusive() {
+    let names = |n: usize| -> Object { PdfString::literal((0..n).map(|i| format!("/n{i}")).collect::<String>().into_bytes()).into() };
+    let mut doc = Document::new_empty();
+    // A usable list restricts the font, so the letter missing from it has no glyph.
+    let at_cap = type1_subset(&mut doc, names(4096));
+    assert_eq!(Metrics::from_dict(&doc, &at_cap).encode("P"), None);
+    // One name past the cap is ignored as a whole and keeps the lenient behaviour.
+    let past_cap = type1_subset(&mut doc, names(4097));
+    assert_eq!(Metrics::from_dict(&doc, &past_cap).encode("P").as_deref(), Some(b"P".as_slice()));
+}
+
+#[test]
 fn type1_charset_uses_the_base_encoding_glyph_names() {
     // Annex D's code and name tables must agree without consulting ToUnicode.
     let mut seen = HashSet::new();
