@@ -309,8 +309,7 @@ pub fn release_after_desktop_grab(ctx: &egui::Context, raw: &mut egui::RawInput)
 
 #[cfg(test)]
 mod tests {
-    use super::{BUTTON, Button, Layout, ResizeDirection, fill_color, zones};
-    use crate::theme::Tokens;
+    use super::{Button, Layout, ResizeDirection, fill_color, zones};
     use egui::{Pos2, Rect};
 
     #[test]
@@ -385,6 +384,9 @@ mod tests {
     #[test]
     fn hovered_buttons_keep_the_text_colour_off_windows() {
         use std::cell::Cell;
+
+        use super::BUTTON;
+        use crate::theme::Tokens;
 
         let ctx = egui::Context::default();
         let screen = Rect::from_min_size(Pos2::ZERO, egui::vec2(100.0, 100.0));
