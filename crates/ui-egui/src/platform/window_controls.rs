@@ -124,22 +124,29 @@ fn fill_color(button: Button, pressed: bool) -> Color32 {
     if pressed { base.gamma_multiply(0.75) } else { base }
 }
 
-/// A round button, neutral until hovered and then macOS-coloured, with a 16-point
-/// symbolic glyph drawn with lines (no icon files).
+/// A round button. Windows uses traffic-light fills and a dark glyph while hovered or pressed;
+/// other platforms keep the text-colour wash and glyph. The 16-point symbolic glyph uses lines, not icon files.
 fn paint(painter: &egui::Painter, rect: Rect, button: Button, maximized: bool, t: &Tokens, response: &egui::Response) {
-    // At rest a neutral wash of the text colour; under the pointer the button takes macOS's
-    // traffic-light colour (a little darker while pressed) and its glyph turns dark to stay legible.
-    let hovered = response.hovered() || response.is_pointer_button_down_on();
-    if hovered {
-        let fill = fill_color(button, response.is_pointer_button_down_on());
+    let hovered = response.hovered();
+    let pressed = response.is_pointer_button_down_on();
+    let windows_traffic_light = cfg!(target_os = "windows") && (hovered || pressed);
+    if windows_traffic_light {
+        let fill = fill_color(button, pressed);
         painter.circle_filled(rect.center(), BUTTON / 2.0, fill);
     } else {
-        painter.circle_filled(rect.center(), BUTTON / 2.0, t.text.gamma_multiply(0.10));
+        let alpha = if pressed {
+            0.28
+        } else if hovered {
+            0.16
+        } else {
+            0.10
+        };
+        painter.circle_filled(rect.center(), BUTTON / 2.0, t.text.gamma_multiply(alpha));
     }
     if response.has_focus() {
         painter.circle_stroke(rect.center(), BUTTON / 2.0 - 0.5, Stroke::new(1.0, t.accent));
     }
-    let stroke = Stroke::new(1.25, if hovered { Color32::from_black_alpha(190) } else { t.text });
+    let stroke = Stroke::new(1.25, if windows_traffic_light { Color32::from_black_alpha(190) } else { t.text });
     // The glyph's 16-point square, its corners on pixel centres so lines stay crisp.
     let c = rect.center();
     let at = |x: f32, y: f32| Pos2::new((c.x - 8.0 + x).round() + 0.5, (c.y - 8.0 + y).round() + 0.5);
@@ -302,7 +309,8 @@ pub fn release_after_desktop_grab(ctx: &egui::Context, raw: &mut egui::RawInput)
 
 #[cfg(test)]
 mod tests {
-    use super::{Button, Layout, ResizeDirection, fill_color, zones};
+    use super::{BUTTON, Button, Layout, ResizeDirection, fill_color, zones};
+    use crate::theme::Tokens;
     use egui::{Pos2, Rect};
 
     #[test]
@@ -371,6 +379,43 @@ mod tests {
             assert!(down.r() <= up.r() && down.g() <= up.g() && down.b() <= up.b());
             assert_ne!(up, down);
         }
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    #[test]
+    fn hovered_buttons_keep_the_text_colour_off_windows() {
+        use std::cell::Cell;
+
+        let ctx = egui::Context::default();
+        let screen = Rect::from_min_size(Pos2::ZERO, egui::vec2(100.0, 100.0));
+        let mut pointer = Pos2::ZERO;
+        let output = ctx.run_ui(egui::RawInput { screen_rect: Some(screen), ..Default::default() }, |ui| {
+            let (rect, _) = ui.allocate_exact_size(egui::vec2(BUTTON, BUTTON), egui::Sense::click());
+            pointer = rect.center();
+        });
+        output.drop_without_applying_deltas();
+
+        let raw = egui::RawInput { screen_rect: Some(screen), events: vec![egui::Event::PointerMoved(pointer)], ..Default::default() };
+        let text = Cell::new(egui::Color32::TRANSPARENT);
+        let output = ctx.run_ui(raw, |ui| {
+            let (rect, response) = ui.allocate_exact_size(egui::vec2(BUTTON, BUTTON), egui::Sense::click());
+            assert!(response.hovered(), "test pointer must hover the window button");
+            let tokens = Tokens::get(ui.ctx());
+            text.set(tokens.text);
+            super::paint(ui.painter(), rect, Button::Close, false, &tokens, &response);
+        });
+
+        let fill = output.shapes.iter().find_map(|shape| match &shape.shape {
+            egui::Shape::Circle(circle) if (circle.radius - BUTTON / 2.0).abs() < 0.1 => Some(circle.fill),
+            _ => None,
+        });
+        assert_eq!(fill, Some(text.get().gamma_multiply(0.16)));
+
+        let glyph = output.shapes.iter().find_map(|shape| match &shape.shape {
+            egui::Shape::LineSegment { stroke, .. } => Some(stroke.color),
+            _ => None,
+        });
+        assert_eq!(glyph, Some(text.get()));
     }
 
     #[test]
