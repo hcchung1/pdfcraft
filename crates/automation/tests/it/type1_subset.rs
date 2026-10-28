@@ -194,3 +194,31 @@ fn type1_charset_respects_custom_builtin_glyph_names() {
     assert_eq!(line.font, "F1", "code 80 uses the present Q glyph, not StandardEncoding's absent P");
     std::fs::remove_dir_all(dir).unwrap();
 }
+
+#[test]
+fn cached_type1_encoding_keeps_each_descriptors_charset_and_replaced_program() {
+    let mut doc = Document::new_empty();
+    let program = doc.add(Object::Stream(subset_program(true)));
+    let descriptor = doc
+        .add(Object::Dict(Dict::from_iter([(b"FontFile".to_vec(), Object::Ref(program)), (b"CharSet".to_vec(), PdfString::literal(b"/Q").into())])));
+    let unicode = doc.add(Object::Stream(Stream::flate(Dict::new(), b"1 beginbfchar <50> <0050> endbfchar")));
+    let mut font = Dict::from_iter([
+        (b"Subtype".to_vec(), Object::name("Type1")),
+        (b"BaseFont".to_vec(), Object::name("ABCDEF+Example-Bold")),
+        (b"FirstChar".to_vec(), Object::Int(32)),
+        (b"Widths".to_vec(), Object::Array(vec![Object::Int(600); 95])),
+        (b"FontDescriptor".to_vec(), Object::Ref(descriptor)),
+        (b"ToUnicode".to_vec(), Object::Ref(unicode)),
+    ]);
+    let present = || Some(b"P".as_slice());
+    assert_eq!(pdfcraft_fonts::pdf::Metrics::from_dict(&doc, &font).encode("P").as_deref(), present());
+    // Reuse the program through a distinct descriptor: CharSet is not part of the program cache.
+    let other = doc
+        .add(Object::Dict(Dict::from_iter([(b"FontFile".to_vec(), Object::Ref(program)), (b"CharSet".to_vec(), PdfString::literal(b"/P").into())])));
+    font.set(b"FontDescriptor".to_vec(), Object::Ref(other));
+    assert_eq!(pdfcraft_fonts::pdf::Metrics::from_dict(&doc, &font).encode("P"), None, "the cached encoding still names Q");
+    font.set(b"FontDescriptor".to_vec(), Object::Ref(descriptor));
+    assert_eq!(pdfcraft_fonts::pdf::Metrics::from_dict(&doc, &font).encode("P").as_deref(), present());
+    doc.set(program, Object::Stream(subset_program(false)));
+    assert_eq!(pdfcraft_fonts::pdf::Metrics::from_dict(&doc, &font).encode("P"), None, "the replacement program has no P glyph");
+}

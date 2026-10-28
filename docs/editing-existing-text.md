@@ -1,6 +1,6 @@
 # Editing existing text and source subsets
 
-> **Last reviewed:** 2026-10-27 · **Last updated:** 2026-10-27 · **Change:** patch (#4966: Type 1 subset glyph availability on edit commit)
+> **Last reviewed:** 2026-10-28 · **Last updated:** 2026-10-28 · **Change:** patch (#4966: Type 1 subset checks and bounded alias lookup cache)
 
 Click a text region in **Edit a PDF → Edit text and images**. One editor contains its
 source rows and mixed styles. Embedded TrueType and OpenType/CFF faces are used in memory;
@@ -41,6 +41,8 @@ built-in encoding, independently of the text used for extraction. Missing glyphs
 fallback path; mixed-style regions retain source glyphs that are still available. The fallback
 can differ in appearance from the original face. Missing, malformed or oversized CharSet data,
 unsupported encodings, and unavailable built-in encodings retain the previous lenient handling.
+Built-in encoding lookups share a bounded cache while aliases resolve to the same live font
+program. Replacing that stream invalidates the cached result; the cache retains no PDF data.
 
 The full selected program, glyph mappings, widths and Unicode text are embedded in the PDF.
 Saving and reopening therefore needs no locally installed font. Editing the same text again
@@ -143,4 +145,5 @@ same way. What is still missing is an identity that survives save and reopen (de
 
 | Date | Change |
 |---|---|
+| 2026-10-28 | Patch: reconcile with current main and deduplicate built-in Type 1 parsing for live program aliases. |
 | 2026-10-27 | Patch: document Type 1 subset glyph checks for #4966 and the remaining fallback limitations. |
