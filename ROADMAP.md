@@ -2,6 +2,7 @@
 
 **Stage: alpha** · next: beta, ~25% (ready for real work 50% → 75%) and ~400–700 h away
 
+> **Last reviewed:** 2026-10-30 | **Last updated:** 2026-10-30 | **Change:** patch (M3, #2500: empty title-strip presses start native window movement immediately; child controls and double-clicks retain input ownership. Native Windows pointer validation remains outstanding; estimates unchanged)
 > **Last reviewed:** 2026-10-29 | **Last updated:** 2026-10-29 | **Change:** minor (M3, #2500 adds an app-drawn Windows title bar and Windows-only hover colours, with `PDFCRAFT_TITLEBAR=system` for the native frame; runtime smoke remains unverified; estimates unchanged)
 > **Last reviewed:** 2026-10-25 | **Last updated:** 2026-10-25 | **Change:** minor (M14 localization current state: Arabic logical catalog, explicit RTL label direction and mirrored stock chrome; native/browser RTL workflows unqualified. Native release Hans face via LXGW WenKai Lite; estimates unchanged)
 > **Last reviewed:** 2026-10-23 · **Last updated:** 2026-10-23 · **Change:** minor (M7, #2636 partial: pasting added text boxes and images in the engine and through `content_copy`; estimates unchanged)
@@ -200,6 +201,7 @@ Ranked; detail and the full milestone table in [docs/roadmap.md](docs/roadmap.md
 
 ## Progress log
 
+- **2026-10-30 (M3, #2500):** Empty title-strip presses hand movement to the desktop before egui consumes an initial drag distance. Click-only background sensing leaves child buttons and draggable tabs their own input, while double-click maximize retains real and repaired release coverage. Windows physical-pointer validation remains outstanding. Estimates unchanged.
 - **2026-10-29 (M3, #2500):** The PR enables the tab strip as the Windows title bar by default, with app-drawn minimize, maximize/restore and close controls; `PDFCRAFT_TITLEBAR=system` keeps the native frame. On Windows, hovered controls use traffic-light colours and dark glyphs; other platforms keep the existing neutral hover and press states. Scoped unit tests passed; the full UI suite reproduces a pre-existing SIGSEGV on unchanged main in this Linux environment. A Windows runtime smoke check remains outstanding. Estimates unchanged.
 - **2026-10-27 (M10, OCR models):** Model staging downloads and verifies the ONNX pair after the upstream RTEN URL brownout; runtime discovery prefers complete ONNX pairs per directory, retains complete RTEN fallback and preserves directory precedence.
 - **2026-10-24 (M10, #4158 partial):** Word, HTML, RTF and PowerPoint export keep a block that continues another on its line (an italic case name, a link, a superscript) as a run in its own style inside that paragraph, with the source's word space, instead of a paragraph of its own. Style changes that wrap onto the next line still split paragraphs (the reading blocks keep style boundaries). Estimates unchanged.
@@ -685,6 +687,7 @@ Newest first: the date, what moved, and the new overall estimate.
 
 | Date | Change | Summary |
 |---|---|---|
+| 2026-10-30 | patch | M3, #2500: start window movement on the primary press without an egui drag threshold; headless regressions cover immediate grabs, child controls and double-clicks with real or repaired releases. Native Windows pointer validation remains outstanding; estimates unchanged. |
 | 2026-10-29 | minor | M3, #2500: reconcile Windows app-drawn title controls with current main, retain Wayland release handling and keep non-Windows hover/press styling neutral. Related unit tests pass; Windows runtime validation remains outstanding. Estimates unchanged. |
 | 2026-10-27 | minor | M10: OCR stages SHA-256-verified ONNX models after the upstream RTEN URL brownout; discovery prefers a complete ONNX pair per directory, falls back to a complete RTEN pair, and never mixes formats or directories; language/web limits and estimates unchanged. |
 | 2026-10-23 | minor | M8, #3205 follow-up: phone-pattern redaction includes the +39 country code on labelled Italian geographic numbers with a slash; dates, protocol identifiers and whole-run guards remain. Estimates unchanged. |
